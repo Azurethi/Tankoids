@@ -10,7 +10,7 @@ const l = console.log,
       sio = require('socket.io')(srv, {});
 
 app.get('/', function (req, res) {
-    res.sendFile(__dirname + '/client/tankoidz.html');
+    res.sendFile(__dirname + '/client/tankoids.html');
 });
 app.get('/clientjs', function (req, res) {
     res.sendFile(__dirname + '/client/client.js');
