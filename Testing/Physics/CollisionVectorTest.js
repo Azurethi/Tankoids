@@ -1,15 +1,11 @@
 //TODO improve \/
 //efficency (3/5/19): 3.9ms/update @ 500 entities
+//    ||    (4/5/19): 2.8ms/update @ 500 entities
 
-const   mSin = Math.sin,
-        mCos = Math.cos,
-        maTan = Math.atan,
-        mPi = Math.PI,
+const   mPi = Math.PI,
         mPow = Math.pow,
         mSqrt = Math.sqrt,
-        mAbs = Math.abs,
-        mCaT = (x) =>{return 1/(Math.sqrt(1+Math.pow(x,2)))},
-        mSaT = (x) =>{return x/(Math.sqrt(1+Math.pow(x,2)))};
+        mAbs = Math.abs;
 
 
 var canvas,_Ent=[],c;
@@ -17,7 +13,7 @@ function onload(){
     canvas = document.getElementById('gameCanvas');
     clear();
     c = canvas.getContext('2d');
-    generateEntities(100);
+    generateEntities(500);
     godmode=true;   //TODO fix
 
     setInterval(update, 50);
@@ -59,8 +55,8 @@ function update(){
     if(doclear)clear();
     c.translate(winX/2,winY/2);
     c.beginPath();
-    _Ent = _Ent.filter(ent=>{
-        if(ent.health<=0 && !godmode) return false;   //TODO re-enable death!
+    _Ent = _Ent.filter((ent, index)=>{
+        if(ent.health<=0 && !godmode) return false;
         ent.x+=ent.vx;
         ent.y+=ent.vy;
 
@@ -68,6 +64,12 @@ function update(){
         ent.vx*=0.9995;
         ent.vy*=0.9995;
         
+        //speed limits
+        if(ent.vx>10) ent.vx = 10;
+        if(ent.vy>10) ent.vy= 10;
+        if(ent.vx<-10) ent.vx = -10;
+        if(ent.vy<-10) ent.vy= -10;
+
         c.moveTo(ent.x+ent.m,ent.y);
         c.arc(ent.x,ent.y,ent.m,0,mPi*2);
 
@@ -78,14 +80,42 @@ function update(){
             ent.vy = -ent.vy;
         }
 
-        
-
         //Other bodies
-        _Ent.forEach(ent2=>{
-            if(ent2.id>ent.id){
-                collide(ent,ent2);
+        for(var i = index+1; i<_Ent.length; i++){
+            var ent2 = _Ent[i];
+            var dx=ent2.x-ent.x;
+            var dy=ent2.y-ent.y;
+            var dist=mSqrt(mPow(dx,2)+mPow(dy,2));
+            
+            if(dist<=ent2.m+ent.m){
+                
+                var dyOdx = dy/dx;
+                var vyOvx = ent.vy/ent.vx;
+                var vyOvx2 = ent2.vy/ent2.vx;
+
+                var mCatdyOdx = 1/(mSqrt(1+mPow(dyOdx,2)));
+                var dxlss0 = (dx<0?-1:1);
+
+                var sumO2 = mAbs(
+                    mCatdyOdx*(
+                        mSqrt((mPow(ent.vx,2)+mPow(ent.vy,2))/(1+mPow(vyOvx,2)))*(ent.vx<0?-1:1)*(dxlss0*(1+(dyOdx)-(vyOvx))+(vyOvx)*(dyOdx))
+                        + 
+                        mSqrt((mPow(ent2.vx,2)+mPow(ent2.vy,2))/(1+mPow(vyOvx2,2)))*dxlss0*(ent2.vx<0?1:-1)*((dyOdx)-(vyOvx2))
+                        )
+                    )*0.25; 
+
+                var sinT =sumO2*dxlss0*mCatdyOdx/(ent.m+ent2.m);
+                var cosT =sumO2*dxlss0*dyOdx*mCatdyOdx/(ent.m+ent2.m);
+
+                ent.vx-=sinT*ent2.m;
+                ent.vy-=cosT*ent2.m;
+                ent2.vx+=sinT*ent.m;
+                ent2.vy+=cosT*ent.m;
+
+                ent.health -= ent2.dmg;
+                ent2.health -= ent.dmg;
             }
-        });
+        }
         return true;
     });
     c.fillStyle = "blue";
@@ -109,49 +139,3 @@ function update(){
     }
 }
 
-function collide(ent,ent2){
-    var dx=ent2.x-ent.x;
-    var dy=ent2.y-ent.y;
-    var dist=mSqrt(mPow(dx,2)+mPow(dy,2));
-    
-    if(dist-ent.m-ent2.m<=0){
-        //angle to other body
-        var theta =mPi/2+(dx<0?mPi:0)-maTan(dy/dx);
-
-        //momentum towards other body.
-        //var ourv=mSqrt(mPow(ent.vx,2)+mPow(ent.vy,2))*mSin(mPi/2+(ent.vx<0?mPi:0) - maTan(ent.vy/ent.vx)-theta);
-        //var teyv=mSqrt(mPow(ent2.vx,2)+mPow(ent2.vy,2))*mCos(mPi/2+(ent2.vx<0?mPi:0) - maTan(ent2.vy/ent2.vx)-theta);
-        
-        //var ovs=mCos((ent.vx<0?mPi:0) - maTan(ent.vy/ent.vx)-theta);//NB: remove Q<0 term in our/teyv
-        //var tvs=mSin((ent2.vx<0?-mPi:-2*mPi) - maTan(ent2.vy/ent2.vx)-theta); //NB: remove Q<0 term in our/teyv
-        //var ovs=mCos(maTan(ent.vy/ent.vx)+theta)+mSin(maTan(ent.vy/ent.vx)+theta);
-        //var tvs=mCos(maTan(ent2.vy/ent2.vx)+theta);
-        //var ovs=mSin(theta+mPi/4) - (ent.vy/ent.vx)*mSin(theta-mPi/4);
-        //var tvs=(mCos(theta)-(ent2.vy/ent2.vx)*mSin(theta));
-
-        //var ovs=mSin((dx<0?7*mPi/4:3*mPi/4)-maTan(dy/dx)) + (ent.vy/ent.vx)*mSin((dx<0?-7*mPi/4:-mPi/4)+maTan(dy/dx));
-        //var tvs=mSin(maTan(dy/dx)+(dx<0?-mPi:0))-(ent2.vy/ent2.vx)*mCos((dx<0?mPi:0)-maTan(dy/dx));
-
-        var ovs=mSin((dx<0?7*mPi/4:3*mPi/4)-maTan(dy/dx)) + (ent.vy/ent.vx)*mSin((dx<0?-7*mPi/4:-mPi/4)+maTan(dy/dx));  //TODO expand & tidy
-        var tvs=mSin(maTan(dy/dx)+(dx<0?-mPi:0))-(ent2.vy/ent2.vx)*mCos((dx<0?mPi:0)-maTan(dy/dx));                     //TODO expand & tidy
-
-        var ourv=mSqrt(mPow(ent.vx,2)+mPow(ent.vy,2))*(ent.vx<0?-1:1)*mCaT(ent.vy/ent.vx)*mSqrt(2)*ovs;
-        var teyv=mSqrt(mPow(ent2.vx,2)+mPow(ent2.vy,2))*(ent2.vx<0?1:-1)*mCaT(ent2.vy/ent2.vx)*tvs;
-
-        var sumO2 = mAbs(ourv + teyv)*0.25; 
-        
-        ent.vx-=sumO2*mSin(theta)*ent2.m/(ent.m+ent2.m);
-        ent.vy-=sumO2*mCos(theta)*ent2.m/(ent.m+ent2.m);
-        ent2.vx+=sumO2*mSin(theta)*ent.m/(ent.m+ent2.m);
-        ent2.vy+=sumO2*mCos(theta)*ent.m/(ent.m+ent2.m);
-
-        /*
-        ent.vx=ent.vx*0.93-sumO2*mSin(theta)*ent2.m/(ent.m+ent2.m);
-        ent.vy=ent.vy*0.93-sumO2*mCos(theta)*ent2.m/(ent.m+ent2.m);
-        ent2.vx=ent2.vx*0.93+sumO2*mSin(theta)*ent.m/(ent.m+ent2.m);
-        ent2.vy=ent2.vy*0.93+sumO2*mCos(theta)*ent.m/(ent.m+ent2.m);
-        */
-        ent.health -= ent2.dmg;
-        ent2.health -= ent.dmg;
-    }
-}
