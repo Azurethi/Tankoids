@@ -1,0 +1,19 @@
+{
+  "name": "tankoids",
+  "version": "1.0.0",
+  "description": "A lil tank game",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Azurethi/Tankoids.git"
+  },
+  "author": "Azurethi",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Azurethi/Tankoids/issues"
+  },
+  "homepage": "https://github.com/Azurethi/Tankoids#readme"
+}
