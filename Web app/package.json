@@ -1,5 +1,5 @@
 {
-  "name": "tankoids",
+  "name": "tankoidz",
   "version": "1.0.0",
   "description": "A lil tank game",
   "main": "app.js",
@@ -15,5 +15,9 @@
   "bugs": {
     "url": "https://github.com/Azurethi/Tankoids/issues"
   },
-  "homepage": "https://github.com/Azurethi/Tankoids#readme"
+  "homepage": "https://github.com/Azurethi/Tankoids#readme",
+  "dependencies": {
+    "express": "^4.16.4",
+    "socket.io": "^2.2.0"
+  }
 }
