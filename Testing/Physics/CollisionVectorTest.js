@@ -51,7 +51,6 @@ var doclear = true,godmode=false;
 function update(){
     var updateStart = Date.now();
 
-    var vecDrawScale = 50;
     if(doclear)clear();
     c.translate(winX/2,winY/2);
     c.beginPath();
