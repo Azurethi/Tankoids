@@ -1,0 +1,248 @@
+
+var canvas,c,xMax,yMax, l = console.log;
+function onLoad(){
+    l('load');
+
+    canvas = document.getElementById("gameCanvas");
+    clear();
+    canvas.addEventListener('mousedown', handlers.mousedown);
+    canvas.addEventListener('mouseup', handlers.mouseup);
+    canvas.addEventListener('mouseout', handlers.mouseup);
+    canvas.addEventListener('mousemove', handlers.mousemove);
+    window.addEventListener('keydown', handlers.keydown);
+    window.addEventListener('keyup', handlers.keyup);
+    c = canvas.getContext('2d');
+
+    const targetFps = 60;   //TODO fix
+    setInterval(update,1000/targetFps);
+}
+
+function update(){
+    //l('update');
+    clear();
+    drawGrid();
+    drawEntities();
+    
+    var dx = xMax/2-curX, dy = yMax/2-curY;
+    var tt=Math.atan(dy/dx) +Math.PI/2 + (dx<0?Math.PI:0);
+
+    keylogic(tt);
+
+    drawTank(xMax/2,yMax/2,tankBodyAngle,tt, true);
+    drawCursor();
+}
+
+
+
+var keyW=false,keyA=false,keyS=false,keyD=false,keySp=false;
+
+var curX=0,curY=0,click=false;
+
+var ourX=0, ourY=0;
+
+function drawCursor(){
+    c.beginPath();
+    cursor.forEach((p)=>{
+        c.moveTo(curX+p.a,curY+p.b);
+        c.lineTo(curX+p.c,curY+p.d);
+    });
+    c.stroke();
+}
+
+function drawGrid(){
+    c.beginPath();
+    for(var x=-ourX%25; x<xMax; x+=25){
+        c.moveTo(x,0);
+        c.lineTo(x,yMax);
+    }
+    for(var y=-ourY%25; y<yMax; y+=25){
+        c.moveTo(0,y);
+        c.lineTo(xMax,y);
+    }
+    c.strokeStyle="#E0E0E0";
+    c.stroke();
+}
+
+
+var entities = [
+    {id: 0, name:"CenterMarker", type:"simple",x:0,y:0,r:10,vx:0,vy:0, colides: false, lifetime:-1},
+    {id: 2, health:100, name:"test2", type:"tank",x:150,y:0,r:15,tb:0.4,tt:0,vx:0.2,vy:0.3, colides:true, lifetime:-1}
+];
+
+function drawEntities(){
+    var count=0;
+    var tmp = [];
+    entities.forEach((ent)=>{
+        ent.x+=ent.vx;ent.y+=ent.vy;    //TODO timeshifting
+        if(ent.lifetime>0) ent.lifetime--;
+        if(ent.lifetime!=0){
+            tmp.push(ent);
+        }
+        switch(ent.type){
+            case "simple": drawSimple(ent.x-ourX+xMax/2,ent.y-ourY+yMax/2,ent.r); break;
+            case "tank": drawTank(ent.x-ourX+xMax/2,ent.y-ourY+yMax/2,ent.tb,ent.tt,false); break;
+            //TODO add more.
+        }
+        count++;
+        entities.forEach((ent2)=>{
+            if(ent!=ent2){
+                var colAngle = collide(ent,ent2);
+                if(colAngle){
+                    ent.vx -= 0.05*Math.sin(colAngle);   //TODO mass scaling
+                    ent.vy -= 0.05*Math.cos(colAngle);  
+                    ent2.vx += 0.05*Math.sin(colAngle);
+                    ent2.vy += 0.05*Math.cos(colAngle);  
+                }
+            }
+        })
+    });
+    entities = tmp;
+}
+
+function collide(ent,ent2){
+    if(ent.colides && ent2.colides){
+        var dx = ent.x - ent2.x;
+        var dy = ent.y - ent2.y;
+        var dist = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
+        if((dist-ent.r-ent2.r) < 0){
+            return Math.atan(dy/dx) +Math.PI/2 + (dx<0?Math.PI:0);
+        }else{
+            return false;
+        }
+    }else{
+        return false;
+    }
+}
+
+function drawSimple(x,y,r){
+    c.beginPath();
+    c.arc(x,y,r,0,2*Math.PI);
+    c.fillStyle = "red";
+    c.fill();
+    c.strokeStyle = "black";
+    c.stroke();
+}
+
+var lastShot=0;
+function keylogic(a){
+    if(keyW){
+        ourX-=Math.sin(tankBodyAngle);
+        ourY+=Math.cos(tankBodyAngle);
+    }
+    if(keyS){
+        ourX+=Math.sin(tankBodyAngle);
+        ourY-=Math.cos(tankBodyAngle);
+    }
+    if(keyA){
+        tankBodyAngle-=0.02;
+    }
+    if(keyD){
+        tankBodyAngle+=0.02;
+    }
+    if(lastShot>0){
+        lastShot--;
+    }else{
+        if(click){
+            lastShot=40;    //TODO timeshift
+            entities.push(
+                {name:"bullet", type:"simple",
+                x:ourX+30*Math.sin(-a),
+                y:ourY+30*Math.cos(-a),
+                r:5,
+                vx:5*Math.sin(-a),
+                vy:5*Math.cos(-a),
+                colides:true, lifetime:150}
+            );
+        }
+    }
+}
+
+
+var tankBodyAngle = 0;
+function drawTank(x,y,tb,tt,isOurs){
+    c.translate(x,y);
+    //tank body
+    c.rotate(tb);
+    c.beginPath();
+    c.moveTo(-25,-35);
+    c.lineTo(25,-35);
+    c.lineTo(25,35);
+    c.lineTo(-25,35);
+    c.lineTo(-25,-35);
+    c.fillStyle = "white";
+    c.fill();
+    c.strokeStyle="black";
+    c.stroke();
+    //body arrow
+    c.beginPath();
+    c.moveTo(5,50);
+    c.lineTo(0,60);
+    c.lineTo(-5,50);
+    c.lineTo(5,50);
+    c.fillStyle = "black";
+    c.fill();
+    c.rotate(-tb);
+    if(isOurs){//laser sight (only for client's tank)
+        c.beginPath();
+        c.moveTo(0,0)
+        c.lineTo(curX-x,curY-y);
+        c.strokeStyle="red";
+        c.stroke();
+    }
+    //gun
+    c.rotate(tt);
+    c.beginPath();
+    c.moveTo(6,0);
+    c.lineTo(-6,0);
+    c.lineTo(-6,30);
+    c.lineTo(6,30);
+    c.lineTo(6,0);
+    c.fillStyle = "black";
+    c.fill();
+    c.rotate(-tt);
+    //turret body
+    c.beginPath();
+    c.arc(0,0,15,0,Math.PI*2,false);
+    c.fillStyle = "grey";
+    c.fill();
+    c.strokeStyle="black";
+    c.stroke();    
+    c.translate(-x,-y);
+}
+
+function clear(){
+    xMax=(canvas.width=window.innerWidth);
+    yMax=(canvas.height=window.innerHeight);
+}
+
+const cursor =[{a:10,b:10,c:5,d:5},{a:-10,b:-10,c:-5,d:-5},{a:-10,b:10,c:-5,d:5},{a:10,b:-10,c:5,d:-5},{a:2,b:0,c:-2,d:0},{a:0,b:2,c:0,d:-2}];
+const handlers={
+    mousedown: (e)=>{
+        click=true;
+    },
+    mouseup: (e)=>{
+        click=false;
+    },
+    keydown: (e)=>{
+        switch(e.code){
+            case "KeyW": keyW=true;   break;
+            case "KeyA": keyA=true;   break;    
+            case "KeyS": keyS=true;   break;
+            case "KeyD": keyD=true;   break;
+            case "Space": keySp=true;   break;
+        }
+    },
+    keyup: (e)=>{
+        switch(e.code){
+            case "KeyW": keyW=false;   break;
+            case "KeyA": keyA=false;   break;    
+            case "KeyS": keyS=false;   break;
+            case "KeyD": keyD=false;   break;
+            case "Space": keySp=false;   break;
+        }
+    },
+    mousemove: (e)=>{
+        curX=e.clientX;
+        curY=e.clientY;
+    }
+};
