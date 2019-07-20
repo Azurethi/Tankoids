@@ -54,7 +54,7 @@ function init(){
         clients.forEach(client=>{
             client.socket.emit('setEntities', ents);
         });
-    }, 5000);   //TODO: decide sync frequency (and maybe stagger sync's to even network load)
+    }, 2000);   //TODO: decide sync frequency (and maybe stagger sync's to even network load)
 
     srv.listen(80);
     l("[init] waiting for clients.");
@@ -105,10 +105,10 @@ function update(){
         if(ent.vx<-10) ent.vx = -10;
         if(ent.vy<-10) ent.vy= -10;
 
-        //confine to window
-        if((ent.x>maxX/2 && ent.vx>0)||ent.x<-maxX/2 && ent.vx<0){
+        //confine to bounds
+        if(((ent.x+ent.m)>maxX/2 && ent.vx>0)||(ent.x-ent.m)<-maxX/2 && ent.vx<0){
             ent.vx = -ent.vx;
-        }else if((ent.y>maxY/2 && ent.vy>0)||(ent.y<-maxY/2 && ent.vy<0)){
+        }else if(((ent.y+ent.m)>maxY/2 && ent.vy>0)||((ent.y-ent.m)<-maxY/2 && ent.vy<0)){
             ent.vy = -ent.vy;
         }
 
@@ -159,7 +159,7 @@ function generateEntities(num){
     if(ents.length>0) lastEid = ents[ents.length-1].id;
     
     for(var i = lastEid+1; i<=lastEid+num; i++){
-        ents.push({
+        var newEnt = {
             id:i,
             health: Math.random() * 1000,
             dmg: Math.random() * 10,
@@ -167,7 +167,10 @@ function generateEntities(num){
             x:maxX*(1/2-Math.random()),
             y:maxY*(1/2-Math.random()),
             vx:4*(1/2-Math.random()),
-            vy:4*(1/2-Math.random())
-        })
+            vy:4*(1/2-Math.random()),
+            col: 0
+        };
+        if(newEnt.x>0) newEnt.col=1;
+        ents.push(newEnt);
     }
 }

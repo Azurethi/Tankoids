@@ -20,37 +20,76 @@ function onload(){
     l("Tankoidz Loaded!");
     
     canvas = document.getElementById("gameCanvas");
-    clear();
+
     //TODO add listeners
     c = canvas.getContext('2d');
-
+    clear();
     //setInterval(keepalive,1000);  TODO?
+    canvas.addEventListener('mousedown', handlers.mousedown);
+    canvas.addEventListener('mouseup', handlers.mouseup);
+    canvas.addEventListener('mouseout', handlers.mouseup);
+    canvas.addEventListener('mousemove', handlers.mousemove);
+    window.addEventListener('keydown', handlers.keydown);
+    window.addEventListener('keyup', handlers.keyup);
     setInterval(draw, 30);
 }
 
 var ourX=0,ourY=0; //TODO get from our entity
+var maxX = 5000, maxY = 5000;
 
 function draw(){
     clear();
     update();   //TODO merge draw & update clientside
-    c.translate(ourX,ourY); //move to current player position (currently just moves 0,0 to center of window)
+
+    //draw grid
     c.beginPath();
-    ents.forEach(ent=>{
-        c.moveTo(ent.x+ent.m,ent.y);
-        c.arc(ent.x,ent.y,ent.m,0,mPi*2);
-    });
-    c.fillStyle = "blue";
-    c.fill();
-    c.strokeStyle = "black";
+    for(var gx=-ourX%25; gx<winX; gx+=25){
+        c.moveTo(gx,0);
+        c.lineTo(gx,winY);
+    }
+    for(var gy=-ourY%25; gy<winY; gy+=25){
+        c.moveTo(0,gy);
+        c.lineTo(winX,gy);
+    }
+    c.strokeStyle="#1d1d1d";
     c.stroke();
-    c.translate(-ourX,-ourY);
+
+
+
+    c.translate(-ourX,-ourY); //move to current player position
+    //draw bounds
+    c.beginPath();
+    c.moveTo(-maxX/2,-maxY/2);
+    c.lineTo(+maxX/2,-maxY/2);
+    c.lineTo(+maxX/2,+maxY/2);
+    c.lineTo(-maxX/2,+maxY/2);
+    c.lineTo(-maxX/2,-maxY/2);
+    c.strokeStyle="#999999";
+    c.stroke();
+    
+    ents.forEach(ent=>{
+        c.beginPath();
+        c.arc(ent.x,ent.y,ent.m,0,mPi*2);
+        c.fillStyle = "#D44A1C77";
+        if(ent.col){
+            c.fillStyle = "#00ace577";
+        }
+        
+        c.fill();
+        c.strokeStyle = "black";
+        c.stroke();
+    });
+    c.translate(ourX,ourY);
 }
 
 var winX,winY;
 function clear(){
     winX = (canvas.width=window.innerWidth);
     winY = (canvas.height=window.innerHeight);
+    c.fillStyle="#000000";
+    c.fillRect(0,0,winX,winY);
 }
+
 
 function update(){
     ents = ents.filter((ent, index)=>{
@@ -58,9 +97,22 @@ function update(){
         ent.x+=ent.vx;
         ent.y+=ent.vy;
 
+        //confine to bounds
+        if(((ent.x+ent.m)>maxX/2 && ent.vx>0)||(ent.x-ent.m)<-maxX/2 && ent.vx<0){
+            ent.vx = -ent.vx;
+        }else if(((ent.y+ent.m)>maxY/2 && ent.vy>0)||((ent.y-ent.m)<-maxY/2 && ent.vy<0)){
+            ent.vy = -ent.vy;
+        }
+
         //Viscous medium
         ent.vx*=0.9995;
         ent.vy*=0.9995;
+
+        //TODO tank controls (not just udrl)
+        if(keyW) ourY-=0.005;
+        if(keyA) ourX-=0.005;
+        if(keyS) ourY+=0.005;
+        if(keyD) ourX+=0.005;
         
         //speed limits
         if(ent.vx>10) ent.vx = 10;
@@ -114,3 +166,40 @@ function update(){
         return true;
     });
 }
+
+var 
+    keyW=false,
+    keyA=false,
+    keyS=false,
+    keyD=false,
+    keySp=false;
+const handlers={
+    mousedown: (e)=>{
+        click=true;
+    },
+    mouseup: (e)=>{
+        click=false;
+    },
+    keydown: (e)=>{
+        switch(e.code){
+            case "KeyW": keyW=true;   break;
+            case "KeyA": keyA=true;   break;    
+            case "KeyS": keyS=true;   break;
+            case "KeyD": keyD=true;   break;
+            case "Space": keySp=true;   break;
+        }
+    },
+    keyup: (e)=>{
+        switch(e.code){
+            case "KeyW": keyW=false;   break;
+            case "KeyA": keyA=false;   break;    
+            case "KeyS": keyS=false;   break;
+            case "KeyD": keyD=false;   break;
+            case "Space": keySp=false;   break;
+        }
+    },
+    mousemove: (e)=>{
+        curX=e.clientX;
+        curY=e.clientY;
+    }
+};
